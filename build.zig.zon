@@ -24,16 +24,13 @@
     // internet connectivity.
     .dependencies = .{
         .clap = .{
-            .url = "git+https://github.com/Hejsil/zig-clap#f0a281ffe91fb64f116dcb04c34cecef70e8c79c",
-            .hash = "122026b67ce2974e3b2fcfd3e2e164b73ee60c55d13f3f60ca7db6c316c8f22a6bf8",
+            .url = "https://github.com/Hejsil/zig-clap/archive/refs/tags/0.9.1.tar.gz",
+            .hash = "122062d301a203d003547b414237229b09a7980095061697349f8bef41be9c30266b",
         },
     },
     .paths = .{
         "build.zig",
         "build.zig.zon",
         "src",
-        // For example...
-        //"LICENSE",
-        //"README.md",
     },
 }

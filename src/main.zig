@@ -1,28 +1,60 @@
 const std = @import("std");
+const clap = @import("clap");
 
-var config = struct {
-    jwt: []const u8 = ""
-};
+const debug = std.debug;
+const io = std.io;
+const process = std.process;
 
 pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
 
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    const params = comptime clap.parseParamsComptime(
+        \\-h, --help                  Display this help and exit.
+        \\-t, --token <STR>           An option parameter, which takes a JWT token to decode.
+        \\-f, --file <FILE>           An option parameter, which takes a JWT token file to decode.
+        \\
+    );
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    // Declare our own parsers which are used to map the argument strings to other
+    const parsers = comptime .{
+        .STR = clap.parsers.string,
+        .FILE = clap.parsers.string,
+    };
 
-    try bw.flush(); // don't forget to flush!
-}
+    var diag = clap.Diagnostic{};
+    var res = clap.parse(clap.Help, &params, parsers, .{
+        .diagnostic = &diag,
+        .allocator = gpa.allocator(),
+    }) catch |err| {
+        diag.report(io.getStdErr().writer(), err) catch {};
+        return err;
+    };
+    defer res.deinit();
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+    if (res.args.help != 0)
+        return clap.usage(std.io.getStdErr().writer(), clap.Help, &params);
+    if (res.args.token) |token| {
+        debug.print("token: {s}\n", .{token});
+
+        // var it = std.mem.split(u8, token, ".");
+        // while (it.next()) |x| {
+        //     debug.print("index: {s}\n", it.index);
+        //     debug.print("{s}\n", .{x});
+        // }
+        // if (it.next()) |encodedHeader| {
+        //     var decodedHeader: [1024]u8 = undefined;
+        //     const decodedHeaderSlice = try std.base64.standard.Decoder.decode(&decodedHeader, encodedHeader);
+        //     debug.print("Decoded Header: {s}\n", .{decodedHeaderSlice});
+        // }
+        // if (it.next()) |encodedPayload| {
+        //     var decodedPayload: [1024]u8 = undefined;
+        //     const decodedPayloadSlice = try std.base64.standard.Decoder.decode(&decodedPayload, encodedPayload);
+        //     debug.print("Decoded Payload: {s}\n", .{decodedPayloadSlice});
+        // }
+    }
+    if (res.args.file) |file|
+        debug.print("--file = {s}\n", .{file});
+    for (res.positionals) |pos|
+        debug.print("{s}\n", .{pos});
 }
