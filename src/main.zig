@@ -4,6 +4,31 @@ const clap = @import("clap");
 const debug = std.debug;
 const io = std.io;
 const process = std.process;
+const B64Decoder = std.base64.standard_no_pad.Decoder;
+
+fn jwtDecoder(token: []u8, allocator: std.mem.Allocator) !void {
+    var it = std.mem.split(u8, token, ".");
+    var arrIndex: usize = 0;
+    while (it.next()) |str| {
+        if (arrIndex < 2) {
+            const decoded_length = try B64Decoder.calcSizeForSlice(str);
+            const decoded = try allocator.alloc(u8, decoded_length);
+            defer allocator.free(decoded);
+            try B64Decoder.decode(decoded, str);
+            switch (arrIndex) {
+                0 => {
+                    // Header
+                    debug.print("Header: {s}\n", .{decoded});
+                },
+                else => {
+                    // Payload
+                    debug.print("Payload: {s}\n", .{decoded});
+                },
+            }
+            arrIndex += 1;
+        }
+    }
+}
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -22,10 +47,12 @@ pub fn main() !void {
         .FILE = clap.parsers.string,
     };
 
+    const allocator = gpa.allocator();
+
     var diag = clap.Diagnostic{};
     var res = clap.parse(clap.Help, &params, parsers, .{
         .diagnostic = &diag,
-        .allocator = gpa.allocator(),
+        .allocator = allocator,
     }) catch |err| {
         diag.report(io.getStdErr().writer(), err) catch {};
         return err;
@@ -35,26 +62,8 @@ pub fn main() !void {
     if (res.args.help != 0)
         return clap.usage(std.io.getStdErr().writer(), clap.Help, &params);
     if (res.args.token) |token| {
-        debug.print("token: {s}\n", .{token});
-
-        // var it = std.mem.split(u8, token, ".");
-        // while (it.next()) |x| {
-        //     debug.print("index: {s}\n", it.index);
-        //     debug.print("{s}\n", .{x});
-        // }
-        // if (it.next()) |encodedHeader| {
-        //     var decodedHeader: [1024]u8 = undefined;
-        //     const decodedHeaderSlice = try std.base64.standard.Decoder.decode(&decodedHeader, encodedHeader);
-        //     debug.print("Decoded Header: {s}\n", .{decodedHeaderSlice});
-        // }
-        // if (it.next()) |encodedPayload| {
-        //     var decodedPayload: [1024]u8 = undefined;
-        //     const decodedPayloadSlice = try std.base64.standard.Decoder.decode(&decodedPayload, encodedPayload);
-        //     debug.print("Decoded Payload: {s}\n", .{decodedPayloadSlice});
-        // }
+        jwtDecoder(token, allocator);
     }
     if (res.args.file) |file|
         debug.print("--file = {s}\n", .{file});
-    for (res.positionals) |pos|
-        debug.print("{s}\n", .{pos});
 }
