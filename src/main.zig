@@ -6,16 +6,16 @@ const io = std.io;
 const process = std.process;
 const B64Decoder = std.base64.standard_no_pad.Decoder;
 
-fn jwtDecoder(token: []u8, allocator: std.mem.Allocator) !void {
+fn jwt_decoder(token: []u8, allocator: std.mem.Allocator) !void {
     var it = std.mem.split(u8, token, ".");
-    var arrIndex: usize = 0;
+    var index: usize = 0;
     while (it.next()) |str| {
-        if (arrIndex < 2) {
+        if (index < 2) {
             const decoded_length = try B64Decoder.calcSizeForSlice(str);
             const decoded = try allocator.alloc(u8, decoded_length);
             defer allocator.free(decoded);
             try B64Decoder.decode(decoded, str);
-            switch (arrIndex) {
+            switch (index) {
                 0 => {
                     // Header
                     debug.print("Header: {s}\n", .{decoded});
@@ -25,7 +25,7 @@ fn jwtDecoder(token: []u8, allocator: std.mem.Allocator) !void {
                     debug.print("Payload: {s}\n", .{decoded});
                 },
             }
-            arrIndex += 1;
+            index += 1;
         }
     }
 }
@@ -62,7 +62,7 @@ pub fn main() !void {
     if (res.args.help != 0)
         return clap.usage(std.io.getStdErr().writer(), clap.Help, &params);
     if (res.args.token) |token| {
-        jwtDecoder(token, allocator);
+        jwt_decoder(token, allocator);
     }
     if (res.args.file) |file|
         debug.print("--file = {s}\n", .{file});
