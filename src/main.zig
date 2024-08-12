@@ -62,8 +62,21 @@ pub fn main() !void {
     if (res.args.help != 0)
         return clap.usage(std.io.getStdErr().writer(), clap.Help, &params);
     if (res.args.token) |token| {
-        jwt_decoder(token, allocator);
+        try jwt_decoder(@constCast(token), allocator);
     }
-    if (res.args.file) |file|
-        debug.print("--file = {s}\n", .{file});
+    if (res.args.file) |file_path| {
+        const max_bytes_per_line = 4096;
+        var file = std.fs.cwd().openFile(file_path, .{}) catch {
+            // couldn't open file
+            return;
+        };
+        defer file.close();
+
+        var buffered_reader = std.io.bufferedReader(file.reader());
+        const reader = buffered_reader.reader();
+        while (try reader.readUntilDelimiterOrEofAlloc(allocator, '\n', max_bytes_per_line)) |line| {
+            defer allocator.free(line);
+            // use line
+        }
+    }
 }
