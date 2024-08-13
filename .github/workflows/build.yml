@@ -1,0 +1,44 @@
+name: build and upload
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: 'Target operating System. linux, macos, windows'
+        required: true
+        type: string
+      arch:
+        description: 'Architecture of the application. x86_64 or aarch64.'
+        required: true
+        type: string
+        default: 'x86_64'
+      version:
+        description: 'Version of the application'
+        required: true
+        type: string
+      zig_version:
+        description: 'Version of Zig to use'
+        required: true
+        type: string
+
+jobs:
+  build_and_upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: ${{ inputs.zig_version }}
+
+      - name: Build
+        run: |
+          zig build  -Doptimize=ReleaseSafe -Dtarget=${{ inputs.arch }}-${{ inputs.os }}
+      
+      - name: upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.os }}-${{ inputs.version }}-${{ inputs.arch }}
+          path: zig-out/bin/*

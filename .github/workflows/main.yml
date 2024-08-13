@@ -2,42 +2,60 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version of the application'
+        required: true
+        type: string
+      create_release:
+        description: 'Create a GitHub release?'
+        type: boolean
+        default: false
 
 env:
   ZIG_VESION: 0.13.0
 
 jobs:
-  build-macos:
+  setup:
     runs-on: ubuntu-latest
+    outputs:
+      zig_version: ${{ env.ZIG_VESION }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: ${{ env.ZIG_VESION }}
-      - name: build
-        run: zig build -Doptimize=ReleaseSafe -Dtarget=aarch64-macos
+      - run: echo "Exposing env vars"
+
+  build-macos:
+    uses: ./.github/workflows/build.yml
+    needs: setup
+    with:
+      os: macos
+      arch: aarch64
+      version: ${{ inputs.version }}
+      zig_version: ${{ needs.setup.outputs.zig_version }}
+
   build-linux:
     strategy:
       matrix:
         arch: [x86_64, aarch64]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: ${{ env.ZIG_VESION }}
-      - run: zig build -Doptimize=ReleaseSafe -Dtarget=${{ matrix.arch }}-linux
+    uses: ./.github/workflows/build.yml
+    needs: setup
+    with:
+      os: linux
+      arch: ${{ matrix.arch }}
+      version: ${{ inputs.version }}
+      zig_version: ${{ needs.setup.outputs.zig_version }}
+
   build-windows:
     strategy:
       matrix:
         arch: [x86_64, aarch64]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: ${{ env.ZIG_VESION }}
-      - run: zig build -Doptimize=ReleaseSafe -Dtarget=${{ matrix.arch }}-windows
+    uses: ./.github/workflows/build.yml
+    needs: setup
+    with:
+      os: windows
+      arch: ${{ matrix.arch }}
+      version: ${{ inputs.version }}
+      zig_version: ${{ needs.setup.outputs.zig_version }}
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -46,3 +64,19 @@ jobs:
         with:
           version: ${{ env.ZIG_VESION }}
       - run: zig fmt --check .
+
+  release:
+    needs: [build-macos, build-linux, build-windows]
+    if: github.event.inputs.create_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create tag
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/${{ inputs.version }}',
+              sha: context.sha
+            })
