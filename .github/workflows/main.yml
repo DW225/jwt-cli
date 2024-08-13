@@ -1,0 +1,44 @@
+name: CI
+on:
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+      - name: build
+        run: zig build -Doptimize=ReleaseSafe -Dtarget=aarch-macos
+  build-linux:
+    strategy:
+      matrix:
+        arch: [x86_64, aarch64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+      - run: zig build -Doptimize=ReleaseSafe -Dtarget=${{ matrix.arch }}-linux
+  build-windows:
+    strategy:
+      matrix:
+        arch: [x86_64, aarch64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+      - run: zig build -Doptimize=ReleaseSafe -Dtarget=${{ matrix.arch }}-windows
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+      - run: zig fmt --check .
