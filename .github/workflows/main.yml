@@ -15,7 +15,7 @@ jobs:
         with:
           version: ${{ env.ZIG_VESION }}
       - name: build
-        run: zig build -Doptimize=ReleaseSafe -Dtarget=aarch-macos
+        run: zig build -Doptimize=ReleaseSafe -Dtarget=aarch64-macos
   build-linux:
     strategy:
       matrix:
