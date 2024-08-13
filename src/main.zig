@@ -65,7 +65,7 @@ pub fn main() !void {
         try jwt_decoder(@constCast(token), allocator);
     }
     if (res.args.file) |file_path| {
-        const max_bytes_per_line = 4096;
+        const max_bytes_per_line = 8192; // max size JWT
         var file = std.fs.cwd().openFile(file_path, .{}) catch {
             // couldn't open file
             return;
@@ -76,7 +76,7 @@ pub fn main() !void {
         const reader = buffered_reader.reader();
         while (try reader.readUntilDelimiterOrEofAlloc(allocator, '\n', max_bytes_per_line)) |line| {
             defer allocator.free(line);
-            // use line
+            try jwt_decoder(line, allocator);
         }
     }
 }
