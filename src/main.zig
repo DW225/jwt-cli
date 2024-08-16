@@ -1,12 +1,19 @@
 const std = @import("std");
 const clap = @import("clap");
 
-const debug = std.debug;
+const stdout = std.io.getStdOut().writer();
 const io = std.io;
 const process = std.process;
 const B64Decoder = std.base64.standard_no_pad.Decoder;
 
-fn jwt_decoder(token: []u8, allocator: std.mem.Allocator) !void {
+const Header = struct {
+    alg: []u8,
+    typ: []u8,
+};
+
+const Payload = struct {};
+
+pub fn jwt_decoder(token: []u8, allocator: std.mem.Allocator) !void {
     var it = std.mem.split(u8, token, ".");
     var index: usize = 0;
     while (it.next()) |str| {
@@ -18,11 +25,11 @@ fn jwt_decoder(token: []u8, allocator: std.mem.Allocator) !void {
             switch (index) {
                 0 => {
                     // Header
-                    debug.print("Header: {s}\n", .{decoded});
+                    try stdout.print("Header: {s}\n", .{decoded});
                 },
                 else => {
                     // Payload
-                    debug.print("Payload: {s}\n", .{decoded});
+                    try stdout.print("Payload: {s}\n", .{decoded});
                 },
             }
             index += 1;
